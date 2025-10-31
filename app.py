@@ -25,7 +25,7 @@ def get_ai_suggestion(text):
         return ""
     
     # ✅ Correct model name
-    model = genai.GenerativeModel("gemini-1.5-flash-latest")
+   model = genai.GenerativeModel("gemini-2.5-flash")
 
     prompt = f"""
     You are an AI assistant that helps users write clear, polite, and professional comments.
