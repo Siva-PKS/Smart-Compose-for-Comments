@@ -19,7 +19,7 @@ st.set_page_config(
     layout="centered"
 )
 
-st.title("💬 AI Smart Comment Suggestion (Google Gemini 2.5 Flash)")
+st.title("💬 AI Smart Comment Suggestion")
 st.caption("Type your comment — AI will rephrase or complete it clearly and politely.")
 
 # ---------------------------
