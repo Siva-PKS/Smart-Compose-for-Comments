@@ -4,14 +4,18 @@ import google.generativeai as genai
 # ---------------------------
 # CONFIGURE GOOGLE API KEY
 # ---------------------------
-genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+if "GOOGLE_API_KEY" in st.secrets:
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+else:
+    st.error("❌ GOOGLE_API_KEY not found in Streamlit secrets.")
+    st.stop()
 
 # ---------------------------
 # PAGE CONFIG
 # ---------------------------
-st.set_page_config(page_title="AI Smart Comment Suggestion", page_icon="💬", layout="centered")
-st.title("💬 Smart Comment Suggestion (Google Gemini)")
-st.write("Start typing your comment below — AI will suggest a polished version automatically.")
+st.set_page_config(page_title="💬 Smart Comment Suggestion", page_icon="💡", layout="centered")
+st.title("💬 AI Smart Comment Suggestion (Google Gemini)")
+st.caption("Type your comment — AI will rephrase or complete it clearly and politely.")
 
 # ---------------------------
 # FUNCTION TO GET AI SUGGESTION
@@ -20,11 +24,12 @@ def get_ai_suggestion(text):
     if not text.strip():
         return ""
     
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    # ✅ Correct model name
+    model = genai.GenerativeModel("gemini-1.5-flash-latest")
 
     prompt = f"""
-    You are an AI assistant helping users write professional and polite comments.
-    Rephrase or complete this comment clearly and helpfully:
+    You are an AI assistant that helps users write clear, polite, and professional comments.
+    Rewrite or complete this comment in a better way:
     "{text}"
     """
 
@@ -40,15 +45,12 @@ def get_ai_suggestion(text):
 user_input = st.text_area("✍️ Type your comment:", height=150, placeholder="Type here...")
 
 if user_input:
-    with st.spinner("Generating AI suggestion..."):
+    with st.spinner("💡 Generating AI suggestion..."):
         suggestion = get_ai_suggestion(user_input)
 
     if suggestion:
-        st.markdown("### 💡 Suggested Version:")
+        st.markdown("### 💬 Suggested Version:")
         st.info(suggestion)
 
-# ---------------------------
-# FOOTER
-# ---------------------------
 st.markdown("---")
-st.caption("Powered by Google Gemini AI · Built with Streamlit Cloud")
+st.caption("Powered by Google Gemini · Built with Streamlit Cloud")
