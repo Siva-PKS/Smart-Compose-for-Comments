@@ -13,8 +13,13 @@ else:
 # ---------------------------
 # PAGE CONFIG
 # ---------------------------
-st.set_page_config(page_title="💬 Smart Comment Suggestion", page_icon="💡", layout="centered")
-st.title("💬 AI Smart Comment Suggestion (Google Gemini)")
+st.set_page_config(
+    page_title="💬 Smart Comment Suggestion",
+    page_icon="💡",
+    layout="centered"
+)
+
+st.title("💬 AI Smart Comment Suggestion (Google Gemini 2.5 Flash)")
 st.caption("Type your comment — AI will rephrase or complete it clearly and politely.")
 
 # ---------------------------
@@ -23,9 +28,9 @@ st.caption("Type your comment — AI will rephrase or complete it clearly and po
 def get_ai_suggestion(text):
     if not text.strip():
         return ""
-    
-    # ✅ Correct model name
-   model = genai.GenerativeModel("gemini-2.5-flash")
+
+    # ✅ Correct Gemini 2.5 Flash model
+    model = genai.GenerativeModel("gemini-2.5-flash")
 
     prompt = f"""
     You are an AI assistant that helps users write clear, polite, and professional comments.
@@ -42,7 +47,11 @@ def get_ai_suggestion(text):
 # ---------------------------
 # STREAMLIT UI
 # ---------------------------
-user_input = st.text_area("✍️ Type your comment:", height=150, placeholder="Type here...")
+user_input = st.text_area(
+    "✍️ Type your comment:",
+    height=150,
+    placeholder="Type here..."
+)
 
 if user_input:
     with st.spinner("💡 Generating AI suggestion..."):
