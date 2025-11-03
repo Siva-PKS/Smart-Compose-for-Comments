@@ -2,13 +2,13 @@ import streamlit as st
 import google.generativeai as genai
 import json
 
-st.set_page_config(page_title="💡 Inline Smart Suggestion", layout="centered")
+st.set_page_config(page_title="💡 AI Inline Smart Compose", layout="centered")
 
 # Configure Gemini API
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
-st.markdown("### 💬 Smart Comment Box (Inline AI Suggestions)")
-st.caption("Type your comment — AI will show 2 inline suggestions you can click to insert.")
+st.markdown("### 💬 AI-Powered Smart Comment Box")
+st.caption("Start typing — AI suggests completions inline within the same textbox.")
 
 # --- Function to get AI suggestions ---
 def get_ai_suggestions(text):
@@ -18,7 +18,8 @@ def get_ai_suggestions(text):
         model = genai.GenerativeModel("gemini-2.0-flash")
         prompt = f"""
         The user typed: "{text}"
-        Suggest 2 short and natural completions (max 10 words each).
+        Suggest 2 short, natural, contextually meaningful completions that could follow this text.
+        Each suggestion must be under 10 words.
         Only return the completions, one per line.
         """
         res = model.generate_content(prompt)
@@ -27,24 +28,21 @@ def get_ai_suggestions(text):
     except Exception as e:
         return []
 
-# --- Session state ---
+# --- Manage state ---
 if "text" not in st.session_state:
     st.session_state.text = ""
 if "suggestions" not in st.session_state:
     st.session_state.suggestions = []
 
-typed = st.session_state.text
-
-# --- Text input area ---
 typed = st.text_area(
-    "Type your comment:",
-    value=typed,
+    "Your Comment",
+    value=st.session_state.text,
     height=160,
-    label_visibility="collapsed",
-    placeholder="Type something..."
+    placeholder="Type your comment here...",
+    label_visibility="collapsed"
 )
 
-# --- Update suggestions dynamically ---
+# --- Generate suggestions on change ---
 if typed != st.session_state.text:
     st.session_state.text = typed
     st.session_state.suggestions = get_ai_suggestions(typed)
@@ -52,33 +50,31 @@ if typed != st.session_state.text:
 suggestions = st.session_state.suggestions
 suggestions_json = json.dumps(suggestions)
 
-# --- HTML + JS: popup inside text box ---
+# --- Inline popup suggestion box within same text area ---
 st.components.v1.html(f"""
 <div style="position: relative; width: 100%;">
-  <div style="position: relative;">
-    <textarea id="commentBox" rows="6"
-      style="width:100%;padding:10px 10px 40px 10px;font-size:16px;
-             border-radius:10px;border:1px solid #ccc;resize:none;
-             font-family:sans-serif;outline:none;overflow:auto;"
-      placeholder="Type your comment...">{typed}</textarea>
+  <textarea id="aiBox" rows="6"
+    style="width:100%;padding:10px 10px 60px 10px;font-size:16px;
+           border-radius:10px;border:1px solid #ccc;resize:none;
+           font-family:sans-serif;outline:none;"
+    placeholder="Type your comment...">{typed}</textarea>
 
-    <!-- Inline suggestion container (inside text box) -->
-    <div id="inlinePopup"
-         style="position:absolute; bottom:8px; left:12px;
-                background:#f9f9f9; border:1px solid #ccc;
-                border-radius:8px; box-shadow:0px 4px 10px rgba(0,0,0,0.08);
-                font-family:sans-serif; font-size:14px;
-                display:none; z-index:10; padding:4px 8px;">
-    </div>
+  <!-- Popup for AI suggestions -->
+  <div id="popup"
+       style="position:absolute; bottom:10px; left:12px; right:12px;
+              background:#fff; border:1px solid #ccc;
+              border-radius:6px; box-shadow:0px 2px 8px rgba(0,0,0,0.1);
+              font-family:sans-serif; font-size:14px; display:none;
+              z-index:10; padding:4px;">
   </div>
 </div>
 
 <script>
 const suggestions = {suggestions_json};
-const inputBox = document.getElementById("commentBox");
-const popup = document.getElementById("inlinePopup");
+const inputBox = document.getElementById("aiBox");
+const popup = document.getElementById("popup");
 
-function showSuggestions() {{
+function showPopup() {{
   popup.innerHTML = "";
   if (suggestions.length === 0 || inputBox.value.trim() === "") {{
     popup.style.display = "none";
@@ -86,23 +82,22 @@ function showSuggestions() {{
   }}
 
   suggestions.forEach((s) => {{
-    const opt = document.createElement("div");
-    opt.textContent = s;
-    opt.style.padding = "4px 6px";
-    opt.style.cursor = "pointer";
-    opt.style.borderRadius = "6px";
-    opt.onmouseover = () => opt.style.background = "#eee";
-    opt.onmouseout = () => opt.style.background = "#f9f9f9";
-    opt.onclick = () => {{
+    const item = document.createElement("div");
+    item.textContent = s;
+    item.style.padding = "5px 8px";
+    item.style.cursor = "pointer";
+    item.style.borderRadius = "4px";
+    item.onmouseover = () => item.style.background = "#f0f0f0";
+    item.onmouseout = () => item.style.background = "#fff";
+    item.onclick = () => {{
       inputBox.value = inputBox.value.trim() + " " + s;
       popup.style.display = "none";
     }};
-    popup.appendChild(opt);
+    popup.appendChild(item);
   }});
-
   popup.style.display = "block";
 }}
 
-showSuggestions();
+showPopup();
 </script>
-""", height=220)
+""", height=230)
