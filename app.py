@@ -2,82 +2,82 @@ import streamlit as st
 import google.generativeai as genai
 import json
 
-st.set_page_config(page_title="💬 Smart Compose Inline", layout="centered")
+st.set_page_config(page_title="💡 Inline AI Smart Compose", layout="centered")
 
-# Configure Gemini
+# Configure Gemini API
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
-st.title("💡 AI Inline Suggestion Text Box")
+st.markdown("### ✍️ Smart Inline AI Suggestion")
+st.caption("Start typing — an inline gray suggestion will appear (press Tab to accept).")
 
-# Function to get AI suggestions
-def get_suggestions(text):
+# Function to get inline suggestion
+def get_inline_suggestion(text):
     if not text.strip():
-        return []
-    prompt = f"""User typed: "{text}"
-Suggest 2 short likely completions (each under 12 words).
-Return only 2 lines, no numbering."""
+        return ""
     try:
         model = genai.GenerativeModel("gemini-2.0-flash")
+        prompt = f"""
+        User typed: "{text}"
+        Predict the next few words that the user is most likely to type next.
+        Keep it short (5-12 words max), same tone and language.
+        """
         res = model.generate_content(prompt)
-        lines = [l.strip("-• ").strip() for l in res.text.split("\n") if l.strip()]
-        return lines[:2]
+        suggestion = res.text.strip().split("\n")[0]
+        return suggestion
     except Exception as e:
-        return [f"(error: {e})"]
+        return ""
 
-# Text state
-if "text" not in st.session_state:
-    st.session_state.text = ""
+# Persistent state
+if "typed_text" not in st.session_state:
+    st.session_state.typed_text = ""
+if "suggestion" not in st.session_state:
+    st.session_state.suggestion = ""
 
-typed = st.text_input("Start typing here 👇", value=st.session_state.text, key="user_text", label_visibility="collapsed")
+typed = st.text_input("Type here:", value=st.session_state.typed_text, label_visibility="collapsed")
 
-if typed != st.session_state.text:
-    st.session_state.text = typed
-    suggestions = get_suggestions(typed)
-else:
-    suggestions = []
+if typed != st.session_state.typed_text:
+    st.session_state.typed_text = typed
+    st.session_state.suggestion = get_inline_suggestion(typed)
 
-# JavaScript-based inline display
-suggestions_json = json.dumps(suggestions)
+suggestion = st.session_state.suggestion
+
+# Inject HTML + JS overlay to show ghost text inline
 st.components.v1.html(f"""
-<textarea id="smartbox" rows="6" style="
-  width:100%;padding:10px;font-size:16px;border-radius:10px;
-  border:1px solid #ccc;outline:none;resize:none;
-  font-family:sans-serif;position:relative;"
-  oninput="updateSuggestions()">{typed}</textarea>
+<div style="position: relative; width: 100%;">
+  <textarea id="aiBox" rows="5"
+    style="width:100%;padding:10px;font-size:16px;border-radius:10px;
+           border:1px solid #ccc;resize:none;font-family:sans-serif;
+           outline:none;color:black;">{typed}</textarea>
 
-<div id="suggestionbox" style="
-  position:absolute;
-  background:#f0f0f0;
-  color:#666;
-  font-size:14px;
-  padding:5px;
-  border-radius:8px;
-  border:1px solid #ddd;
-  display:none;
-  white-space:pre-wrap;
-  max-width:95%;
-  margin-top:-20px;
-  opacity:0.9;
-  ">
+  <div id="ghostText"
+    style="position:absolute;top:10px;left:10px;
+           color:#aaa;font-size:16px;font-family:sans-serif;
+           pointer-events:none;white-space:pre-wrap;
+           overflow:hidden;"></div>
 </div>
 
 <script>
-const suggestions = {suggestions_json};
-const inputBox = document.getElementById("smartbox");
-const suggBox = document.getElementById("suggestionbox");
+const input = document.getElementById('aiBox');
+const ghost = document.getElementById('ghostText');
+const suggestion = {json.dumps(suggestion)};
 
-function updateSuggestions() {{
-    if (suggestions.length > 0 && inputBox.value.trim() !== "") {{
-        suggBox.innerHTML = "💡 " + suggestions.join("<br>💡 ");
-        const rect = inputBox.getBoundingClientRect();
-        suggBox.style.top = (window.scrollY + rect.top + inputBox.offsetHeight - 50) + "px";
-        suggBox.style.left = (rect.left + 20) + "px";
-        suggBox.style.display = "block";
-    }} else {{
-        suggBox.style.display = "none";
-    }}
+function updateGhost() {{
+  const typed = input.value;
+  ghost.textContent = typed + (typed.trim() ? " " : "") + suggestion;
+  ghost.style.width = input.offsetWidth + "px";
+  ghost.style.height = input.offsetHeight + "px";
 }}
-updateSuggestions();
+
+// Tab key to accept suggestion
+input.addEventListener('keydown', (e) => {{
+  if (e.key === 'Tab' && suggestion) {{
+    e.preventDefault();
+    input.value = input.value + " " + suggestion;
+    ghost.textContent = "";
+  }}
+}});
+
+updateGhost();
 </script>
-""", height=220)
+""", height=180)
 
