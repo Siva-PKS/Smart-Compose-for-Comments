@@ -1,65 +1,83 @@
 import streamlit as st
 import google.generativeai as genai
+import json
 
-# ---------------------------
-# CONFIGURE GOOGLE API KEY
-# ---------------------------
-if "GOOGLE_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-else:
-    st.error("❌ GOOGLE_API_KEY not found in Streamlit secrets.")
-    st.stop()
+st.set_page_config(page_title="💬 Smart Compose Inline", layout="centered")
 
-# ---------------------------
-# PAGE CONFIG
-# ---------------------------
-st.set_page_config(
-    page_title="💬 Smart Comment Suggestion",
-    page_icon="💡",
-    layout="centered"
-)
+# Configure Gemini
+genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
-st.title("💬 AI Smart Comment Suggestion")
-st.caption("Type your comment — AI will rephrase or complete it clearly and politely.")
+st.title("💡 AI Inline Suggestion Text Box")
 
-# ---------------------------
-# FUNCTION TO GET AI SUGGESTION
-# ---------------------------
-def get_ai_suggestion(text):
+# Function to get AI suggestions
+def get_suggestions(text):
     if not text.strip():
-        return ""
-
-    # ✅ Correct Gemini 2.5 Flash model
-    model = genai.GenerativeModel("gemini-2.5-flash")
-
-    prompt = f"""
-    You are an AI assistant that helps users write clear, polite, and professional comments.
-    Rewrite or complete this comment in a better way:
-    "{text}"
-    """
-
+        return []
+    prompt = f"""User typed: "{text}"
+Suggest 2 short likely completions (each under 12 words).
+Return only 2 lines, no numbering."""
     try:
-        response = model.generate_content(prompt)
-        return response.text.strip()
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        res = model.generate_content(prompt)
+        lines = [l.strip("-• ").strip() for l in res.text.split("\n") if l.strip()]
+        return lines[:2]
     except Exception as e:
-        return f"⚠️ Error generating suggestion: {str(e)}"
+        return [f"(error: {e})"]
 
-# ---------------------------
-# STREAMLIT UI
-# ---------------------------
-user_input = st.text_area(
-    "✍️ Type your comment:",
-    height=150,
-    placeholder="Type here..."
-)
+# Text state
+if "text" not in st.session_state:
+    st.session_state.text = ""
 
-if user_input:
-    with st.spinner("💡 Generating AI suggestion..."):
-        suggestion = get_ai_suggestion(user_input)
+typed = st.text_input("Start typing here 👇", value=st.session_state.text, key="user_text", label_visibility="collapsed")
 
-    if suggestion:
-        st.markdown("### 💬 Suggested Version:")
-        st.info(suggestion)
+if typed != st.session_state.text:
+    st.session_state.text = typed
+    suggestions = get_suggestions(typed)
+else:
+    suggestions = []
 
-st.markdown("---")
-st.caption("Powered by Google Gemini · Built with Streamlit Cloud")
+# JavaScript-based inline display
+suggestions_json = json.dumps(suggestions)
+st.components.v1.html(f"""
+<textarea id="smartbox" rows="6" style="
+  width:100%;padding:10px;font-size:16px;border-radius:10px;
+  border:1px solid #ccc;outline:none;resize:none;
+  font-family:sans-serif;position:relative;"
+  oninput="updateSuggestions()">{typed}</textarea>
+
+<div id="suggestionbox" style="
+  position:absolute;
+  background:#f0f0f0;
+  color:#666;
+  font-size:14px;
+  padding:5px;
+  border-radius:8px;
+  border:1px solid #ddd;
+  display:none;
+  white-space:pre-wrap;
+  max-width:95%;
+  margin-top:-20px;
+  opacity:0.9;
+  ">
+</div>
+
+<script>
+const suggestions = {suggestions_json};
+const inputBox = document.getElementById("smartbox");
+const suggBox = document.getElementById("suggestionbox");
+
+function updateSuggestions() {{
+    if (suggestions.length > 0 && inputBox.value.trim() !== "") {{
+        suggBox.innerHTML = "💡 " + suggestions.join("<br>💡 ");
+        const rect = inputBox.getBoundingClientRect();
+        suggBox.style.top = (window.scrollY + rect.top + inputBox.offsetHeight - 50) + "px";
+        suggBox.style.left = (rect.left + 20) + "px";
+        suggBox.style.display = "block";
+    }} else {{
+        suggBox.style.display = "none";
+    }}
+}}
+updateSuggestions();
+</script>
+""", height=220)
+
